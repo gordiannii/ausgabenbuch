@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B3A30">
+<title>Kassenbuch</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+  :root{
+    --paper:#F3F5EF;
+    --band:#E1EADF;
+    --rule:#A9BFB2;
+    --ink:#16241F;
+    --ink-deep:#1B3A30;
+    --muted:#5E7268;
+    --debit:#A32B1E;
+    --credit:#1B5E48;
+    --mono: ui-monospace, "SF Mono", "DejaVu Sans Mono", "Roboto Mono", Menlo, monospace;
+    --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);color:var(--ink);font-family:var(--ui);
+    font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%;padding-bottom:2rem;
+  }
+  .wrap{max-width:640px;margin:0 auto}
+
+  .head{
+    background:var(--ink-deep);color:#EAF2EC;
+    padding:calc(1.1rem + env(safe-area-inset-top)) 1.1rem 1.1rem;position:relative;
+  }
+  .head::after{
+    content:"";position:absolute;left:0;right:0;bottom:-6px;height:6px;
+    background:repeating-linear-gradient(90deg,var(--ink-deep) 0 8px,transparent 8px 16px);
+  }
+  .eyebrow{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:#8FB3A2;margin:0 0 .15rem}
+  .balrow{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+  .balance{
+    font-family:var(--mono);font-size:2.4rem;line-height:1.05;font-weight:600;
+    font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+  }
+  .balance.neg{color:#F0A79C}
+  .baseSel{
+    background:#2C5145;border:1px solid #46705F;color:#D6E5DA;
+    border-radius:3px;padding:.25rem .4rem;font-family:var(--mono);
+    font-size:.78rem;letter-spacing:.06em;
+  }
+  .head-meta{
+    display:flex;gap:1.3rem;margin-top:.6rem;
+    font-family:var(--mono);font-size:.74rem;color:#8FB3A2;font-variant-numeric:tabular-nums;
+  }
+  .head-meta b{font-weight:600;color:#D6E5DA;display:block}
+  .head-meta span{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase}
+  .gear{
+    position:absolute;top:calc(1rem + env(safe-area-inset-top));right:.8rem;
+    background:none;border:1px solid #3D6154;color:#9EC0AF;border-radius:4px;
+    padding:.35rem .6rem;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;font-family:var(--ui);
+  }
+
+  .entry{padding:1.4rem 1.1rem 1.1rem}
+  .entry h2{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 .7rem;font-weight:600}
+  .seg{display:flex;border:1px solid var(--rule);border-radius:3px;overflow:hidden;margin-bottom:.7rem}
+  .seg button{
+    flex:1;padding:.6rem .2rem;background:transparent;border:0;
+    font-family:var(--ui);font-size:.82rem;color:var(--muted);
+    border-right:1px solid var(--rule);cursor:pointer;
+  }
+  .seg button:last-child{border-right:0}
+  .seg button[aria-pressed="true"]{background:var(--ink-deep);color:#EAF2EC;font-weight:600}
+  .row{display:flex;gap:.55rem;margin-bottom:.7rem}
+  .fld{flex:1;display:flex;flex-direction:column;gap:.25rem;min-width:0}
+  .fld.amt{flex:0 0 42%}
+  .fld.cur{flex:0 0 6rem}
+  label{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  input,select{
+    width:100%;padding:.62rem .6rem;border:1px solid var(--rule);border-radius:3px;
+    background:#FBFCFA;color:var(--ink);font-size:1rem;font-family:var(--ui);
+  }
+  input.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+  input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--ink-deep);outline-offset:1px}
+  .hint{font-family:var(--mono);font-size:.72rem;color:var(--muted);margin:-.2rem 0 .7rem}
+  .hint[hidden],.row[hidden]{display:none}
+  .save{
+    width:100%;padding:.85rem;border:0;border-radius:3px;background:var(--ink-deep);
+    color:#EAF2EC;font-size:.92rem;font-family:var(--ui);font-weight:600;cursor:pointer;
+  }
+  .save:active{background:#143027}
+
+  .ledger{margin-top:.4rem}
+  .month{display:flex;justify-content:space-between;align-items:baseline;padding:.75rem 1.1rem .35rem;border-bottom:1px solid var(--rule)}
+  .month .m{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .month .s{font-family:var(--mono);font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+  .item{
+    display:grid;grid-template-columns:1fr auto auto;gap:.1rem .7rem;align-items:baseline;
+    padding:.6rem 1.1rem;border-bottom:1px solid rgba(169,191,178,.45);
+  }
+  .item:nth-child(even){background:var(--band)}
+  .item .nm{grid-column:1;font-size:.95rem;word-break:break-word}
+  .item .dt{grid-column:1;grid-row:2;font-family:var(--mono);font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
+  .item .val{grid-column:2;grid-row:1;font-family:var(--mono);font-size:1rem;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .item .val.d{color:var(--debit)}
+  .item .val.c{color:var(--credit)}
+  .item .run{grid-column:2;grid-row:2;text-align:right;font-family:var(--mono);font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .item .del{grid-column:3;grid-row:1/3;align-self:center;background:none;border:0;color:var(--muted);font-size:1.15rem;line-height:1;padding:.3rem .1rem;cursor:pointer}
+  .empty{padding:2.4rem 1.4rem;text-align:center;color:var(--muted);font-size:.92rem}
+  .empty b{display:block;color:var(--ink);font-size:1rem;margin-bottom:.3rem}
+
+  dialog{border:1px solid var(--rule);border-radius:4px;padding:0;background:var(--paper);color:var(--ink);width:min(92vw,440px)}
+  dialog::backdrop{background:rgba(22,36,31,.55)}
+  .dlg{padding:1.1rem}
+  .dlg h2{font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 .9rem}
+  .dlg h3{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:1.4rem 0 .5rem;font-weight:600}
+  .curtab{border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+  .curline{display:grid;grid-template-columns:3.4rem 1fr auto;gap:.5rem;align-items:center;padding:.45rem .55rem;border-bottom:1px solid rgba(169,191,178,.5)}
+  .curline:last-child{border-bottom:0}
+  .curline:nth-child(odd){background:var(--band)}
+  .curline .code{font-family:var(--mono);font-size:.86rem;font-weight:600}
+  .curline input{padding:.4rem .45rem;font-size:.88rem}
+  .curline .rm{background:none;border:0;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:.2rem .3rem}
+  .curline .anchor{font-family:var(--mono);font-size:.78rem;color:var(--muted);text-align:right;padding-right:.3rem}
+  .addcur{display:grid;grid-template-columns:4.6rem 1fr auto;gap:.5rem;margin-top:.6rem}
+  .addcur input{padding:.5rem}
+  .addcur button{border:1px solid var(--rule);background:#FBFCFA;border-radius:3px;padding:.5rem .7rem;font-size:.82rem;cursor:pointer;font-family:var(--ui)}
+  .btns{display:flex;gap:.5rem;flex-wrap:wrap}
+  .btn{flex:1;min-width:8rem;padding:.6rem;border:1px solid var(--rule);border-radius:3px;background:#FBFCFA;color:var(--ink);font-size:.82rem;font-family:var(--ui);cursor:pointer}
+  .btn.danger{color:var(--debit);border-color:#D9A79F}
+  .close{width:100%;margin-top:1.3rem;padding:.75rem;border:0;border-radius:3px;background:var(--ink-deep);color:#EAF2EC;font-size:.9rem;font-weight:600;cursor:pointer}
+  .note{font-size:.74rem;color:var(--muted);margin:.5rem 0 0;line-height:1.4}
+  .warn{background:#FBE9E5;border-bottom:1px solid #E0B4AB;color:#7A2115;padding:.6rem 1.1rem;font-size:.78rem}
+  .warn[hidden]{display:none}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="head">
+    <button class="gear" id="openSettings">Einstellungen</button>
+    <p class="eyebrow">Restbudget</p>
+    <div class="balrow">
+      <div class="balance" id="balance">0,00</div>
+      <select class="baseSel" id="baseSel" aria-label="Anzeigewährung"></select>
+    </div>
+    <div class="head-meta">
+      <div><span>Einzahlungen</span><b id="sumIn">0,00</b></div>
+      <div><span>Ausgaben</span><b id="sumOut">0,00</b></div>
+    </div>
+  </header>
+
+  <div class="warn" id="fileWarn" hidden>
+    Über <code>file://</code> geöffnet. Speicher und Offline-Modus arbeiten hier unzuverlässig – die Seite von einem echten Origin laden (z.&nbsp;B. GitHub Pages) und zum Startbildschirm hinzufügen.
+  </div>
+
+  <section class="entry">
+    <h2>Neuer Eintrag</h2>
+
+    <div class="seg" role="group" aria-label="Art des Eintrags">
+      <button type="button" id="tExp" aria-pressed="true">Ausgabe</button>
+      <button type="button" id="tDep" aria-pressed="false">Einzahlung</button>
+    </div>
+
+    <div class="row">
+      <div class="fld">
+        <label for="fName">Bezeichnung</label>
+        <input id="fName" type="text" autocomplete="off" placeholder="Supermarkt">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="fld amt">
+        <label for="fAmount">Betrag</label>
+        <input id="fAmount" class="num" type="text" inputmode="decimal" placeholder="0,00">
+      </div>
+      <div class="fld cur">
+        <label for="fCur">Währung</label>
+        <select id="fCur"></select>
+      </div>
+      <div class="fld">
+        <label for="fDate">Datum</label>
+        <input id="fDate" type="date">
+      </div>
+    </div>
+
+    <div class="row" id="rateRow" hidden>
+      <div class="fld">
+        <label for="fRate" id="rateLabel">Kurs für diesen Eintrag</label>
+        <input id="fRate" class="num" type="text" inputmode="decimal">
+      </div>
+    </div>
+    <p class="hint" id="conv" hidden></p>
+
+    <button class="save" id="btnSave">Eintrag speichern</button>
+  </section>
+
+  <section class="ledger" id="ledger"></section>
+</div>
+
+<dialog id="settings">
+  <div class="dlg">
+    <h2>Einstellungen</h2>
+
+    <div class="fld">
+      <label for="sBase">Anzeigewährung</label>
+      <select id="sBase"></select>
+    </div>
+    <p class="note">Das Kassenbuch rechnet intern in EUR. Die Anzeigewährung bestimmt nur, worin Saldo und Summen dargestellt werden.</p>
+
+    <h3>Währungen und Kurse</h3>
+    <div class="curtab" id="curTab"></div>
+    <div class="addcur">
+      <input id="newCode" type="text" placeholder="CHF" maxlength="3" autocapitalize="characters" aria-label="Währungscode">
+      <input id="newRate" class="num" type="text" inputmode="decimal" placeholder="Kurs in EUR" aria-label="Kurs in EUR">
+      <button type="button" id="addCur">Hinzufügen</button>
+    </div>
+    <p class="note">Kurs = wie viel EUR eine Einheit dieser Währung wert ist. Die Werte gelten als Vorschlag für neue Einträge; gebuchte Beträge behalten ihren damaligen Kurs.</p>
+
+    <h3>Daten</h3>
+    <div class="btns">
+      <button class="btn" id="expJson">JSON sichern</button>
+      <button class="btn" id="expCsv">CSV sichern</button>
+      <button class="btn" id="impBtn">JSON laden</button>
+      <button class="btn danger" id="wipe">Alles löschen</button>
+    </div>
+    <input type="file" id="impFile" accept="application/json,.json" hidden>
+    <p class="note" id="storeNote"></p>
+
+    <button class="close" id="closeSettings">Fertig</button>
+  </div>
+</dialog>
+
+<script>
+(function(){
+  "use strict";
+
+  var KEY = "kassenbuch.v1";
+  var ANCHOR = "EUR";
+
+  /* tx: { id, name, units (signed, in tx-Waehrung), currency, rate (EUR je 1 Einheit),
+           anchor (signed Cent in EUR), date, created } */
+  var state = {
+    version: 2,
+    base: "EUR",
+    currencies: { EUR: 1, USD: 0.92 },
+    tx: []
+  };
+
+  /* ---------- Speicher + Migration ---------- */
+  function load(){
+    var raw;
+    try{ raw = localStorage.getItem(KEY); }catch(e){ return; }
+    if(!raw) return;
+    var d;
+    try{ d = JSON.parse(raw); }catch(e){ console.warn("Daten unlesbar", e); return; }
+    if(!d || typeof d !== "object") return;
+
+    if(d.version === 2){
+      if(d.currencies && typeof d.currencies === "object") state.currencies = d.currencies;
+      state.currencies[ANCHOR] = 1;
+      if(typeof d.base === "string" && state.currencies[d.base]) state.base = d.base;
+      if(Array.isArray(d.tx)) state.tx = d.tx;
+      return;
+    }
+
+    /* v1 -> v2: eine feste USD-Rate, Betraege positiv, Vorzeichen in cents */
+    state.currencies = { EUR: 1, USD: (typeof d.rate === "number" && d.rate > 0) ? d.rate : 0.92 };
+    state.base = "EUR";
+    state.tx = (Array.isArray(d.tx) ? d.tx : []).map(function(t){
+      var sign = t.cents < 0 ? -1 : 1;
+      return {
+        id: t.id,
+        name: t.name,
+        units: Math.abs(Number(t.original) || 0) * sign,
+        currency: t.currency || "EUR",
+        rate: (typeof t.rate === "number" && t.rate > 0) ? t.rate : 1,
+        anchor: t.cents,
+        date: t.date,
+        created: t.created
+      };
+    });
+  }
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch(e){ alert("Speichern fehlgeschlagen. Browserspeicher prüfen."); }
+  }
+
+  /* ---------- Hilfen ---------- */
+  var MON = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+  var fmtCache = {};
+
+  function formatter(code){
+    if(fmtCache[code]) return fmtCache[code];
+    var f;
+    try{
+      f = new Intl.NumberFormat("de-DE",{style:"currency",currency:code});
+      f.format(1);
+    }catch(e){
+      var plain = new Intl.NumberFormat("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2});
+      f = { format: function(v){ return plain.format(v) + " " + code; } };
+    }
+    fmtCache[code] = f;
+    return f;
+  }
+  function fmt(cents, code){ return formatter(code || state.base).format(cents/100); }
+  function num(v){ return new Intl.NumberFormat("de-DE",{minimumFractionDigits:2,maximumFractionDigits:4}).format(v); }
+
+  function parseNum(s){
+    if(s === null || s === undefined) return NaN;
+    s = String(s).trim().replace(/\s/g,"").replace(",",".");
+    if(!s) return NaN;
+    var n = Number(s);
+    return isFinite(n) ? n : NaN;
+  }
+  function today(){
+    var d = new Date(), p = function(n){ return String(n).padStart(2,"0"); };
+    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
+  }
+  function dayLabel(iso){ var p = iso.split("-"); return p[2]+"."+p[1]+"."; }
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+  /* Wert eines Eintrags in der Anzeigewaehrung.
+     Gleiche Waehrung -> Originalbetrag exakt, keine Rundungsverluste.
+     Andere Waehrung  -> ueber den EUR-Anker mit dem aktuellen Kurs. */
+  function shown(t){
+    if(t.currency === state.base) return Math.round(t.units * 100);
+    var r = state.currencies[state.base];
+    if(!r || r <= 0) return t.anchor;
+    return Math.round(t.anchor / r);
+  }
+
+  /* ---------- Elemente ---------- */
+  var $ = function(id){ return document.getElementById(id); };
+  var elBal=$("balance"), elIn=$("sumIn"), elOut=$("sumOut"), elLedger=$("ledger"), baseSel=$("baseSel");
+  var fName=$("fName"), fAmount=$("fAmount"), fCur=$("fCur"), fDate=$("fDate"),
+      fRate=$("fRate"), rateRow=$("rateRow"), rateLabel=$("rateLabel"), conv=$("conv");
+  var tExp=$("tExp"), tDep=$("tDep");
+  var dlg=$("settings"), sBase=$("sBase"), curTab=$("curTab");
+  var kind = "expense";
+
+  function codes(){ return Object.keys(state.currencies).sort(); }
+
+  function fillSelect(sel, selected){
+    sel.textContent = "";
+    codes().forEach(function(c){
+      var o = document.createElement("option");
+      o.value = c; o.textContent = c;
+      if(c === selected) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
+  /* ---------- Darstellung ---------- */
+  function render(){
+    fillSelect(baseSel, state.base);
+
+    var list = state.tx.slice().sort(function(a,b){
+      if(a.date === b.date) return (a.created || "") < (b.created || "") ? -1 : 1;
+      return a.date < b.date ? -1 : 1;
+    });
+
+    var i, running = 0, inSum = 0, outSum = 0;
+    for(i=0;i<list.length;i++){
+      var v = shown(list[i]);
+      list[i]._v = v;
+      running += v;
+      list[i]._run = running;
+      if(v >= 0) inSum += v; else outSum += v;
+    }
+
+    elBal.textContent = fmt(running);
+    elBal.classList.toggle("neg", running < 0);
+    elIn.textContent = fmt(inSum);
+    elOut.textContent = fmt(Math.abs(outSum));
+
+    elLedger.textContent = "";
+    if(!list.length){
+      var e = document.createElement("div");
+      e.className = "empty";
+      e.innerHTML = "<b>Noch keine Buchungen</b>Trag dein Startbudget als Einzahlung ein.";
+      elLedger.appendChild(e);
+      return;
+    }
+
+    var monthly = {};
+    for(i=0;i<list.length;i++){
+      var k = list[i].date.slice(0,7);
+      monthly[k] = (monthly[k] || 0) + list[i]._v;
+    }
+
+    list.reverse();
+    var curKey = null, group = null;
+
+    for(i=0;i<list.length;i++){
+      var t = list[i], key = t.date.slice(0,7);
+
+      if(key !== curKey){
+        curKey = key;
+        var h = document.createElement("div");
+        h.className = "month";
+        var m = document.createElement("span");
+        m.className = "m";
+        m.textContent = MON[Number(key.slice(5,7))-1] + " " + key.slice(0,4);
+        var s = document.createElement("span");
+        s.className = "s";
+        s.textContent = (monthly[key] > 0 ? "+" : "") + fmt(monthly[key]);
+        h.appendChild(m); h.appendChild(s);
+        elLedger.appendChild(h);
+        group = document.createElement("div");
+        elLedger.appendChild(group);
+      }
+
+      var row = document.createElement("div");
+      row.className = "item";
+
+      var nm = document.createElement("div");
+      nm.className = "nm";
+      nm.textContent = t.name;
+
+      var dt = document.createElement("div");
+      dt.className = "dt";
+      dt.textContent = dayLabel(t.date) + (t.currency === state.base
+        ? ""
+        : "  ·  " + fmt(Math.round(Math.abs(t.units)*100), t.currency) + " @ " + num(t.rate));
+
+      var val = document.createElement("div");
+      val.className = "val " + (t._v < 0 ? "d" : "c");
+      val.textContent = (t._v > 0 ? "+" : "") + fmt(t._v);
+
+      var run = document.createElement("div");
+      run.className = "run";
+      run.textContent = fmt(t._run);
+
+      var del = document.createElement("button");
+      del.className = "del"; del.type = "button"; del.textContent = "×";
+      del.setAttribute("aria-label", "Eintrag „" + t.name + "“ löschen");
+      del.dataset.id = t.id;
+
+      row.appendChild(nm); row.appendChild(dt);
+      row.appendChild(val); row.appendChild(run); row.appendChild(del);
+      group.appendChild(row);
+    }
+  }
+
+  elLedger.addEventListener("click", function(ev){
+    var b = ev.target.closest && ev.target.closest(".del");
+    if(!b) return;
+    var id = b.dataset.id;
+    var t = state.tx.filter(function(x){ return x.id === id; })[0];
+    if(!t) return;
+    if(!confirm("„" + t.name + "“ löschen?")) return;
+    state.tx = state.tx.filter(function(x){ return x.id !== id; });
+    save(); render();
+  });
+
+  baseSel.addEventListener("change", function(){
+    state.base = baseSel.value;
+    save(); render(); syncRateField();
+  });
+
+  /* ---------- Eingabe ---------- */
+  function setKind(k){
+    kind = k;
+    tExp.setAttribute("aria-pressed", k === "expense" ? "true" : "false");
+    tDep.setAttribute("aria-pressed", k === "deposit" ? "true" : "false");
+    updateConv();
+  }
+  tExp.addEventListener("click", function(){ setKind("expense"); });
+  tDep.addEventListener("click", function(){ setKind("deposit"); });
+
+  function syncRateField(){
+    var c = fCur.value;
+    var needsRate = (c !== ANCHOR);
+    rateRow.hidden = !needsRate;
+    if(needsRate){
+      rateLabel.textContent = "Kurs für diesen Eintrag — 1 " + c + " in " + ANCHOR;
+      if(!fRate.value || fRate.dataset.forCur !== c){
+        fRate.value = String(state.currencies[c] || "");
+        fRate.dataset.forCur = c;
+      }
+    }
+    updateConv();
+  }
+
+  function updateConv(){
+    var c = fCur.value;
+    var a = parseNum(fAmount.value);
+    if(isNaN(a) || a <= 0){ conv.hidden = true; return; }
+
+    var rate = (c === ANCHOR) ? 1 : parseNum(fRate.value);
+    if(isNaN(rate) || rate <= 0){ conv.hidden = true; return; }
+
+    var anchorCents = Math.round(a * rate * 100);
+    if(c === state.base){ conv.hidden = true; return; }
+
+    var br = state.currencies[state.base];
+    if(!br || br <= 0){ conv.hidden = true; return; }
+    conv.hidden = false;
+    conv.textContent = fmt(Math.round(a*100), c) + "  ->  " + fmt(Math.round(anchorCents / br), state.base);
+  }
+
+  fCur.addEventListener("change", syncRateField);
+  fAmount.addEventListener("input", updateConv);
+  fRate.addEventListener("input", updateConv);
+
+  $("btnSave").addEventListener("click", function(){
+    var name = fName.value.trim();
+    var amount = parseNum(fAmount.value);
+    var date = fDate.value || today();
+    var c = fCur.value;
+
+    if(!name){ fName.focus(); alert("Bezeichnung fehlt."); return; }
+    if(isNaN(amount) || amount <= 0){ fAmount.focus(); alert("Betrag muss größer als 0 sein."); return; }
+
+    var rate = 1;
+    if(c !== ANCHOR){
+      rate = parseNum(fRate.value);
+      if(isNaN(rate) || rate <= 0){ fRate.focus(); alert("Kurs muss größer als 0 sein."); return; }
+    }
+
+    var sign = (kind === "expense") ? -1 : 1;
+
+    state.tx.push({
+      id: uid(),
+      name: name,
+      units: amount * sign,
+      currency: c,
+      rate: rate,
+      anchor: Math.round(amount * rate * 100) * sign,
+      date: date,
+      created: new Date().toISOString()
+    });
+    save();
+
+    fName.value = ""; fAmount.value = ""; fDate.value = today();
+    conv.hidden = true;
+    render();
+    fName.focus();
+  });
+
+  /* ---------- Waehrungstabelle ---------- */
+  function inUse(code){
+    return state.tx.some(function(t){ return t.currency === code; });
+  }
+
+  function renderCurTab(){
+    curTab.textContent = "";
+    codes().forEach(function(c){
+      var line = document.createElement("div");
+      line.className = "curline";
+
+      var code = document.createElement("div");
+      code.className = "code";
+      code.textContent = c;
+      line.appendChild(code);
+
+      if(c === ANCHOR){
+        var an = document.createElement("div");
+        an.className = "anchor";
+        an.textContent = "Referenz";
+        line.appendChild(an);
+        var sp = document.createElement("span");
+        line.appendChild(sp);
+      }else{
+        var inp = document.createElement("input");
+        inp.className = "num";
+        inp.type = "text";
+        inp.inputMode = "decimal";
+        inp.value = String(state.currencies[c]);
+        inp.setAttribute("aria-label", "Kurs " + c + " in EUR");
+        inp.addEventListener("change", function(){
+          var v = parseNum(inp.value);
+          if(isNaN(v) || v <= 0){
+            alert("Kurs muss größer als 0 sein.");
+            inp.value = String(state.currencies[c]);
+            return;
+          }
+          state.currencies[c] = v;
+          save(); render(); syncRateField();
+        });
+        line.appendChild(inp);
+
+        var rm = document.createElement("button");
+        rm.className = "rm"; rm.type = "button"; rm.textContent = "×";
+        rm.setAttribute("aria-label", c + " entfernen");
+        rm.addEventListener("click", function(){
+          if(inUse(c)){ alert(c + " wird noch von Buchungen verwendet und kann nicht entfernt werden."); return; }
+          delete state.currencies[c];
+          if(state.base === c) state.base = ANCHOR;
+          save(); renderCurTab(); render(); refreshCurSelects();
+        });
+        line.appendChild(rm);
+      }
+      curTab.appendChild(line);
+    });
+  }
+
+  function refreshCurSelects(){
+    var keepEntry = state.currencies[fCur.value] ? fCur.value : ANCHOR;
+    fillSelect(fCur, keepEntry);
+    fillSelect(sBase, state.base);
+    syncRateField();
+  }
+
+  $("addCur").addEventListener("click", function(){
+    var code = $("newCode").value.trim().toUpperCase();
+    var rate = parseNum($("newRate").value);
+    if(!/^[A-Z]{3}$/.test(code)){ alert("Bitte einen dreistelligen Code eingeben, z. B. CHF."); return; }
+    if(state.currencies[code]){ alert(code + " gibt es schon."); return; }
+    if(isNaN(rate) || rate <= 0){ alert("Kurs muss größer als 0 sein."); return; }
+    state.currencies[code] = rate;
+    $("newCode").value = ""; $("newRate").value = "";
+    save(); renderCurTab(); refreshCurSelects(); render();
+  });
+
+  /* ---------- Einstellungen ---------- */
+  $("openSettings").addEventListener("click", function(){
+    fillSelect(sBase, state.base);
+    renderCurTab();
+    showStore();
+    dlg.showModal();
+  });
+  sBase.addEventListener("change", function(){
+    state.base = sBase.value;
+    save(); render(); syncRateField();
+  });
+  $("closeSettings").addEventListener("click", function(){ save(); dlg.close(); });
+
+  function showStore(){
+    var n = state.tx.length, bytes = 0;
+    try{ bytes = (localStorage.getItem(KEY) || "").length; }catch(e){}
+    $("storeNote").textContent = n + " " + (n === 1 ? "Buchung" : "Buchungen") +
+      " im Browserspeicher (" + (bytes/1024).toFixed(1) + " KB). " +
+      "Beim Löschen der Browserdaten ist alles weg – regelmäßig sichern.";
+  }
+
+  function download(text, filename, mime){
+    var blob = new Blob([text], {type: mime + ";charset=utf-8"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  }
+
+  $("expJson").addEventListener("click", function(){
+    download(JSON.stringify(state, null, 2), "kassenbuch-" + today() + ".json", "application/json");
+  });
+
+  $("expCsv").addEventListener("click", function(){
+    var q = function(v){ return '"' + String(v).replace(/"/g,'""') + '"'; };
+    var dec = function(v, d){ return v.toFixed(d || 2).replace(".",","); };
+    var lines = ["Datum;Bezeichnung;Betrag;Waehrung;Kurs EUR;Betrag EUR;Betrag " + state.base];
+    var sorted = state.tx.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+    sorted.forEach(function(t){
+      lines.push([
+        t.date, q(t.name),
+        dec(t.units), t.currency, dec(t.rate, 4),
+        dec(t.anchor/100), dec(shown(t)/100)
+      ].join(";"));
+    });
+    download("\ufeff" + lines.join("\r\n"), "kassenbuch-" + today() + ".csv", "text/csv");
+  });
+
+  $("impBtn").addEventListener("click", function(){ $("impFile").click(); });
+  $("impFile").addEventListener("change", function(ev){
+    var f = ev.target.files && ev.target.files[0];
+    if(!f) return;
+    var rd = new FileReader();
+    rd.onload = function(){
+      try{
+        var d = JSON.parse(rd.result);
+        if(!d || !Array.isArray(d.tx)) throw new Error("Kein gültiges Kassenbuch.");
+        if(!confirm("Import ersetzt die aktuellen " + state.tx.length + " Buchungen durch " + d.tx.length + ". Fortfahren?")) return;
+        localStorage.setItem(KEY, JSON.stringify(d));
+        state = { version:2, base:"EUR", currencies:{EUR:1,USD:0.92}, tx:[] };
+        load();
+        save(); renderCurTab(); refreshCurSelects(); render(); showStore();
+      }catch(e){
+        alert("Datei konnte nicht gelesen werden: " + e.message);
+      }
+    };
+    rd.readAsText(f);
+    ev.target.value = "";
+  });
+
+  $("wipe").addEventListener("click", function(){
+    if(!confirm("Alle Buchungen unwiderruflich löschen?")) return;
+    state.tx = [];
+    save(); render(); showStore();
+  });
+
+  /* ---------- Start ---------- */
+  load();
+  fDate.value = today();
+  fillSelect(fCur, ANCHOR);
+  fillSelect(sBase, state.base);
+  syncRateField();
+  setKind("expense");
+  render();
+
+  if(location.protocol === "file:") $("fileWarn").hidden = false;
+
+  if("serviceWorker" in navigator && location.protocol !== "file:"){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(e){
+        console.warn("Service Worker nicht registriert", e);
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>

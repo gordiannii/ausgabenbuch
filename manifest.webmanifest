@@ -1,0 +1,20 @@
+{
+  "name": "Kassenbuch",
+  "short_name": "Kassenbuch",
+  "description": "Offline-Ausgabentracker in Euro und US-Dollar",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F5EF",
+  "theme_color": "#1B3A30",
+  "lang": "de",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
