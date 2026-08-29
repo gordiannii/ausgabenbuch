@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1B3A30">
-<title>Kassenbuch</title>
+<title>Ausgabenbuch</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -132,6 +132,15 @@
   .note{font-size:.74rem;color:var(--muted);margin:.5rem 0 0;line-height:1.4}
   .warn{background:#FBE9E5;border-bottom:1px solid #E0B4AB;color:#7A2115;padding:.6rem 1.1rem;font-size:.78rem}
   .warn[hidden]{display:none}
+  .foot{
+    margin-top:2.2rem;padding:1.1rem 1.1rem 0;
+    border-top:1px solid var(--rule);
+    text-align:center;
+  }
+  .foot span{
+    font-family:var(--mono);font-size:.7rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);
+  }
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -197,6 +206,10 @@
   </section>
 
   <section class="ledger" id="ledger"></section>
+
+  <footer class="foot">
+    <span>Made by FMCreators</span>
+  </footer>
 </div>
 
 <dialog id="settings">
@@ -207,7 +220,7 @@
       <label for="sBase">Anzeigewährung</label>
       <select id="sBase"></select>
     </div>
-    <p class="note">Das Kassenbuch rechnet intern in EUR. Die Anzeigewährung bestimmt nur, worin Saldo und Summen dargestellt werden.</p>
+    <p class="note">Das Ausgabenbuch rechnet intern in EUR. Die Anzeigewährung bestimmt nur, worin Saldo und Summen dargestellt werden.</p>
 
     <h3>Währungen und Kurse</h3>
     <div class="curtab" id="curTab"></div>
@@ -647,7 +660,7 @@
   }
 
   $("expJson").addEventListener("click", function(){
-    download(JSON.stringify(state, null, 2), "kassenbuch-" + today() + ".json", "application/json");
+    download(JSON.stringify(state, null, 2), "ausgabenbuch-" + today() + ".json", "application/json");
   });
 
   $("expCsv").addEventListener("click", function(){
@@ -662,7 +675,7 @@
         dec(t.anchor/100), dec(shown(t)/100)
       ].join(";"));
     });
-    download("\ufeff" + lines.join("\r\n"), "kassenbuch-" + today() + ".csv", "text/csv");
+    download("\ufeff" + lines.join("\r\n"), "ausgabenbuch-" + today() + ".csv", "text/csv");
   });
 
   $("impBtn").addEventListener("click", function(){ $("impFile").click(); });
@@ -673,7 +686,7 @@
     rd.onload = function(){
       try{
         var d = JSON.parse(rd.result);
-        if(!d || !Array.isArray(d.tx)) throw new Error("Kein gültiges Kassenbuch.");
+        if(!d || !Array.isArray(d.tx)) throw new Error("Kein gültiges Ausgabenbuch.");
         if(!confirm("Import ersetzt die aktuellen " + state.tx.length + " Buchungen durch " + d.tx.length + ". Fortfahren?")) return;
         localStorage.setItem(KEY, JSON.stringify(d));
         state = { version:2, base:"EUR", currencies:{EUR:1,USD:0.92}, tx:[] };

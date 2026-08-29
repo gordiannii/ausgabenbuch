@@ -1,6 +1,6 @@
 {
-  "name": "Kassenbuch",
-  "short_name": "Kassenbuch",
+  "name": "Ausgabenbuch",
+  "short_name": "Ausgabenbuch",
   "description": "Offline-Ausgabentracker in Euro und US-Dollar",
   "start_url": "./index.html",
   "scope": "./",
