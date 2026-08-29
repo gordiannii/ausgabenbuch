@@ -37,6 +37,13 @@
     content:"";position:absolute;left:0;right:0;bottom:-6px;height:6px;
     background:repeating-linear-gradient(90deg,var(--ink-deep) 0 8px,transparent 8px 16px);
   }
+  .wordmark{
+    font-family:var(--mono);font-size:.78rem;font-weight:600;
+    letter-spacing:.2em;text-transform:uppercase;color:#8FB3A2;
+    margin:0 0 .9rem;padding-bottom:.5rem;
+    border-bottom:1px solid #35594B;
+    max-width:11ch;
+  }
   .eyebrow{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:#8FB3A2;margin:0 0 .15rem}
   .balrow{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
   .balance{
@@ -149,6 +156,7 @@
 
   <header class="head">
     <button class="gear" id="openSettings">Einstellungen</button>
+    <p class="wordmark">Ausgabenbuch</p>
     <p class="eyebrow">Restbudget</p>
     <div class="balrow">
       <div class="balance" id="balance">0,00</div>

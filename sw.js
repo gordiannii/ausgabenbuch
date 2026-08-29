@@ -2,7 +2,7 @@
    Cache-first für die App-Shell. Bei jeder Änderung an index.html
    die VERSION hochzählen, sonst liefert der Browser die alte Datei. */
 
-var VERSION = "ausgabenbuch-v3";
+var VERSION = "ausgabenbuch-v4";
 var SHELL = [
   "./",
   "./index.html",
