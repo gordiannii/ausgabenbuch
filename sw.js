@@ -2,12 +2,12 @@
    Cache-first für die App-Shell. Bei jeder Änderung an index.html
    die VERSION hochzählen, sonst liefert der Browser die alte Datei. */
 
-var VERSION = "ausgabenbuch-v8";
+var VERSION = "ausgabenbuch-v9";
 var SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./icon.svg"
+  "./icon-v2.svg"
 ];
 
 self.addEventListener("install", function(ev){
